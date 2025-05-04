@@ -317,7 +317,7 @@ function getLocalTime()
 {
   $.getJSON('/localTime', function(data) {
     // console.log(data);   // used for debugging
-    $("#local_time").text(data["time"]);
+    $("#local_time").text(data["local_time"]);
   });
 }
 
