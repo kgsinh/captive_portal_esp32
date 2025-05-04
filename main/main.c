@@ -19,12 +19,16 @@
 #include "lwip/inet.h"
 #include "esp_ota_ops.h"
 
+// Components
 #include "esp_http_server.h"
 #include "dns_server.h"
 #include "app_station.h"
 #include "local_server.h"
 #include "time_sync.h"
 
+#define URI_HANDLER_MARGIN (1u) // Margin for the URI Handlers    
+#define URI_HANDLERS_COUNT (sizeof(uri_handlers) / sizeof(uri_handlers[0]))   
+ 
 #define EXAMPLE_ESP_WIFI_AP_SSID CONFIG_ESP_WIFI_AP_SSID
 #define EXAMPLE_ESP_WIFI_PASS CONFIG_ESP_WIFI_AP_PASSWORD
 #define EXAMPLE_MAX_STA_CONN CONFIG_ESP_MAX_AP_STA_CONN
@@ -81,7 +85,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 static void start_webserver(void);
 static void wifi_init_softap(void);
 static void http_server_fw_update_reset_timer(void);
-static void handler_initialize(void);
+//static void handler_initialize(void);
 
 static esp_err_t http_server_j_query_handler(httpd_req_t *req);
 static esp_err_t http_server_index_html_handler(httpd_req_t *req);
@@ -90,7 +94,24 @@ static esp_err_t http_server_app_js_handler(httpd_req_t *req);
 static esp_err_t http_server_favicon_handler(httpd_req_t *req);
 static esp_err_t http_server_ota_update_handler(httpd_req_t *req);
 static esp_err_t http_server_ota_status_handler(httpd_req_t *req);
+static esp_err_t http_server_get_ssid_handler(httpd_req_t *req);
+static esp_err_t http_server_time_handler(httpd_req_t *req);
 static esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err);
+static void get_local_time_string_utc(char *time_str, size_t len);
+static void get_local_time_string(char *time_str, size_t len);
+static esp_err_t http_server_get_sensor_data_handler(httpd_req_t *req);
+
+static const httpd_uri_t uri_handlers[] = {
+    {"/jquery-3.3.1.min.js", HTTP_GET, http_server_j_query_handler, NULL},
+    {"/", HTTP_GET, http_server_index_html_handler, NULL},
+    {"/app.css", HTTP_GET, http_server_app_css_handler, NULL},
+    {"/app.js", HTTP_GET, http_server_app_js_handler, NULL},
+    {"/favicon.ico", HTTP_GET, http_server_favicon_handler, NULL},
+    {"/OTAupdate", HTTP_POST, http_server_ota_update_handler, NULL},
+    {"/OTAstatus", HTTP_POST, http_server_ota_status_handler, NULL},
+    {"/apSSID", HTTP_GET, http_server_get_ssid_handler, NULL},
+    {"/localTime", HTTP_GET, http_server_time_handler, NULL},
+    {"/Sensor", HTTP_GET, http_server_get_sensor_data_handler, NULL}};
 
 void app_main(void)
 {
@@ -121,6 +142,7 @@ void app_main(void)
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
 
     // Initialise ESP32 in SoftAP mode
@@ -240,6 +262,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 static void start_webserver(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_uri_handlers = URI_HANDLERS_COUNT + URI_HANDLER_MARGIN;
     config.max_open_sockets = 13;
     config.lru_purge_enable = true;
 
@@ -247,9 +270,16 @@ static void start_webserver(void)
     if (httpd_start(&http_server_handle, &config) == ESP_OK)
     {
         // Set URI handlers
-        ESP_LOGI(TAG, "Registering URI handlers");
-        handler_initialize();
+        for(size_t i = 0; i < URI_HANDLERS_COUNT; i++)
+        {
+            ESP_LOGI(TAG, "Registering URI handler: %s", uri_handlers[i].uri);
+            httpd_register_uri_handler(http_server_handle, &uri_handlers[i]);
+        }
         httpd_register_err_handler(http_server_handle, HTTPD_404_NOT_FOUND, http_404_error_handler);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to start HTTP server");
     }
 }
 
@@ -292,6 +322,7 @@ static void http_server_fw_update_reset_timer(void)
     }
 }
 
+#if 0
 static void handler_initialize(void)
 {
     // Register jQuery handler
@@ -345,6 +376,32 @@ static void handler_initialize(void)
             .handler = http_server_ota_status_handler,
             .user_ctx = NULL};
 
+    // Register ssid Handler
+    httpd_uri_t ssid_handler =
+    {
+        .uri = "/apSSID",
+        .method = HTTP_GET,
+        .handler = http_server_get_ssid_handler,
+        .user_ctx = NULL};
+
+    // Register time Handler
+    httpd_uri_t time_handler =
+    {
+        .uri = "/localTime",
+        .method = HTTP_GET,
+        .handler = http_server_time_handler,
+        .user_ctx = NULL};
+
+    // Register get sensor data handler
+    httpd_uri_t sensor_data_handler =
+    {
+        .uri = "/Sensor",
+        .method = HTTP_GET,
+        .handler = http_server_get_sensor_data_handler,
+        .user_ctx = NULL};
+
+ 
+    
     httpd_register_uri_handler(http_server_handle, &jquery_js);
     httpd_register_uri_handler(http_server_handle, &index_html);
     httpd_register_uri_handler(http_server_handle, &app_css);
@@ -352,7 +409,11 @@ static void handler_initialize(void)
     httpd_register_uri_handler(http_server_handle, &favicon_ico);
     httpd_register_uri_handler(http_server_handle, &ota_update);
     httpd_register_uri_handler(http_server_handle, &ota_status);
+    httpd_register_uri_handler(http_server_handle, &ssid_handler);
+    httpd_register_uri_handler(http_server_handle, &time_handler);
+    httpd_register_uri_handler(http_server_handle, &sensor_data_handler);
 }
+#endif
 
 /*
  * jQuery get handler requested when accessing the web page.
@@ -642,5 +703,70 @@ static esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
     httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
 
     ESP_LOGI(TAG, "Redirecting to root");
+    return ESP_OK;
+}
+
+static esp_err_t http_server_get_ssid_handler(httpd_req_t *req)
+{
+    char ssid_json[100];
+    ESP_LOGI(TAG, "SSID Requested");
+    sprintf(ssid_json, "{\"ssid\":\"%s\"}", EXAMPLE_ESP_WIFI_AP_SSID);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, ssid_json, strlen(ssid_json));
+
+    return ESP_OK;
+}
+
+static esp_err_t http_server_time_handler(httpd_req_t *req)
+{   
+    char local_time[64];
+    char utc_time[64];
+    char time_json[200];
+    ESP_LOGI(TAG, "Time Requested");
+
+    get_local_time_string(local_time, sizeof(local_time)); 
+    get_local_time_string_utc(utc_time, sizeof(utc_time));
+    
+    snprintf(time_json, sizeof(time_json),
+    "{\"local_time\":\"%s\",\"utc_time\":\"%s\"}",
+    local_time, utc_time);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, time_json, strlen(time_json));
+
+    return ESP_OK;
+}
+
+static void get_local_time_string(char *time_str, size_t len)
+{
+    time_t now = time(NULL);
+    struct tm timeinfo = {0};
+    localtime_r(&now, &timeinfo);
+    strftime(time_str, len, "%Y-%m-%d %H:%M:%S", &timeinfo);
+}
+
+static void get_local_time_string_utc(char *time_str, size_t len)
+{
+    time_t now = time(NULL);
+    struct tm timeinfo = {0};
+    gmtime_r(&now, &timeinfo);
+    strftime(time_str, len, "%Y-%m-%d %H:%M:%S", &timeinfo);
+}
+
+static esp_err_t http_server_get_sensor_data_handler(httpd_req_t *req)
+{
+    char sensor_data_json[100];
+    ESP_LOGI(TAG, "Sensor Data Requested");
+
+    // Simulate sensor data retrieval
+    int temperature = 25; 
+    int humidity = 60;   
+
+    sprintf(sensor_data_json, "{\"temp\":%d,\"humidity\":%d}", temperature, humidity);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, sensor_data_json, strlen(sensor_data_json));
+
     return ESP_OK;
 }
