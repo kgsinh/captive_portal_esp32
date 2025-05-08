@@ -1,8 +1,14 @@
 /**
- * @file local_server.h
+ * @file app_local_server.h
  */
-#ifndef LOCAL_SERVER_H
-#define LOCAL_SERVER_H
+#ifndef APP_LOCAL_SERVER_H
+#define APP_LOCAL_SERVER_H
+
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+bool app_local_server_init(void);
 
 /*
  * Messages for the HTTP Monitor
@@ -40,4 +46,8 @@ typedef struct http_server_q_msg
 
 void http_server_fw_update_reset_cb(void *arg);
 
-#endif // LOCAL_SERVER_H
+bool app_local_server_init(void);
+bool app_local_server_start(void);
+bool app_local_server_process(void);
+
+#endif // APP_LOCAL_SERVER_H
