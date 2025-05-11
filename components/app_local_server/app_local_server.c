@@ -18,6 +18,7 @@
 #include <cJSON.h>
 
 #include "app_local_server.h"
+#include "dns_server.h"
 
 #define URI_HANDLER_MARGIN (1u) // Margin for the URI Handlers
 #define URI_HANDLERS_COUNT (sizeof(uri_handlers) / sizeof(uri_handlers[0]))
@@ -118,6 +119,7 @@ bool app_local_server_start(void)
 {
     // Start the web server
     start_webserver();
+    start_dns_server();
 
     return true;
 }

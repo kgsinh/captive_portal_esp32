@@ -10,8 +10,6 @@
 #include "lwip/inet.h"
 #include "esp_ota_ops.h"
 
-#include "esp_http_server.h"
-#include "dns_server.h"
 #include "app_station.h"
 #include "time_sync.h"
 
@@ -56,7 +54,6 @@ void app_main(void)
     wifi_init_sta();
 
     app_local_server_start();
-    start_dns_server();
 
     ESP_ERROR_CHECK(esp_wifi_start());
 
