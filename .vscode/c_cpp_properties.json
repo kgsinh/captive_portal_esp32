@@ -9,6 +9,7 @@
                 //"${config:idf.espIdfPath}/components/**",
                 "${config:idf.espIdfPathWin}/components/**",
                 "${workspaceFolder}/**"
+                //"${env:IDF_PATH}/components/**"
             ],
             "browse": {
                 "path": [
@@ -16,6 +17,7 @@
                     //"${config:idf.espIdfPath}/components",
                     "${config:idf.espIdfPathWin}/components",
                     "${workspaceFolder}"
+                    //"${env:IDF_PATH}/components"
                 ],
                 "limitSymbolsToIncludedHeaders": true
             }

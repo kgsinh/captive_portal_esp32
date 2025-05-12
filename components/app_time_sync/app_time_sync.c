@@ -1,11 +1,7 @@
-/* LwIP SNTP example
+/**
+ * @file app_time_sync.c
+ */
 
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
@@ -35,7 +31,8 @@ void time_sync_init(void)
     time(&now);
     localtime_r(&now, &timeinfo);
     // Is time set? If not, tm_year will be (1970 - 1900).
-    if (timeinfo.tm_year < (2016 - 1900)) {
+    if (timeinfo.tm_year < (2016 - 1900))
+    {
         ESP_LOGI(TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
         obtain_time();
         // update 'now' variable with current time
@@ -75,23 +72,23 @@ static void obtain_time(void)
     // config.sync_cb = time_sync_notification_cb; // only if we need the notification function
     // esp_netif_sntp_init(&config);
 
-
     // ESP_LOGI(TAG, "Starting SNTP");
     // esp_netif_sntp_start();
 
     /* This demonstrates configuring more than one server
      */
     esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
-    config.sync_cb = time_sync_notification_cb;     // Note: This is only needed if we want
+    config.sync_cb = time_sync_notification_cb; // Note: This is only needed if we want
 
     esp_netif_sntp_init(&config);
 
     // wait for time to be set
     time_t now = 0;
-    struct tm timeinfo = { 0 };
+    struct tm timeinfo = {0};
     int retry = 0;
     const int retry_count = 20;
-    while (esp_netif_sntp_sync_wait(2000 / portTICK_PERIOD_MS) == ESP_ERR_TIMEOUT && ++retry < retry_count) {
+    while (esp_netif_sntp_sync_wait(2000 / portTICK_PERIOD_MS) == ESP_ERR_TIMEOUT && ++retry < retry_count)
+    {
         ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
     }
     time(&now);

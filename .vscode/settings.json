@@ -11,5 +11,8 @@
         "target/esp32s3.cfg"
     ],
     "idf.portWin": "COM3",
-    "idf.flashType": "UART"
+    "idf.flashType": "UART",
+    "files.associations": {
+        "esp_event.h": "c"
+    }
 }

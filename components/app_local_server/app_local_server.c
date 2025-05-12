@@ -540,7 +540,7 @@ static esp_err_t http_server_get_ssid_handler(httpd_req_t *req)
 {
     char ssid_json[100];
     ESP_LOGI(TAG, "SSID Requested");
-    sprintf(ssid_json, "{\"ssid\":\"%s\"}", CONFIG_ESP_WIFI_SSID);
+    sprintf(ssid_json, "{\"ssid\":\"%s\"}", CONFIG_ESP_WIFI_AP_SSID);
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, ssid_json, strlen(ssid_json));
