@@ -16,7 +16,7 @@
 #include "lwip/inet.h"
 #include "esp_ota_ops.h"
 #include <cJSON.h>
-
+#include "nvs_storage.h"
 #include "app_local_server.h"
 #include "dns_server.h"
 
@@ -91,6 +91,7 @@ static esp_err_t http_server_get_data_handler(httpd_req_t *req);
 static int16_t get_humidity(void);
 static int16_t get_temperature(void);
 bool get_data_rsp_string(char *key, char *buffer, uint16_t len);
+static esp_err_t http_server_wifi_connect_handler(httpd_req_t *req);
 
 static const httpd_uri_t uri_handlers[] = {
     {"/jquery-3.3.1.min.js", HTTP_GET, http_server_j_query_handler, NULL},
@@ -103,7 +104,8 @@ static const httpd_uri_t uri_handlers[] = {
     {"/apSSID", HTTP_GET, http_server_get_ssid_handler, NULL},
     {"/localTime", HTTP_GET, http_server_time_handler, NULL},
     {"/Sensor", HTTP_GET, http_server_get_sensor_data_handler, NULL},
-    {"/getData", HTTP_POST, http_server_get_data_handler, NULL}};
+    {"/getData", HTTP_POST, http_server_get_data_handler, NULL},
+    {"/wifiConnect", HTTP_POST, http_server_wifi_connect_handler, NULL}};
 
 // FUNCTIONS
 bool app_local_server_init(void)
@@ -779,4 +781,54 @@ static int16_t get_humidity(void)
 {
     // return random number between 0 and 100
     return (rand() % 100);
+}
+
+static esp_err_t http_server_wifi_connect_handler(httpd_req_t *req)
+{
+    bool isComma = false;
+    int32_t length = 0;
+    uint16_t rsp_len = 0;
+    char response[100] = {0};
+    char temp_buff[256] = {0};
+    ESP_LOGI(TAG, "Parameters Request Received");
+    // Read request content
+    char buf[256];
+
+    int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
+
+    if (ret <= 0)
+    {
+        ESP_LOGE(TAG, "Failed to receive request data");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    buf[ret] = '\0';
+
+    // Process parameters (this is a placeholder for actual processing logic)
+    ESP_LOGI(TAG, "Received parameters: %s", buf);
+
+    // Extract the "ssid" and "password" values
+    char ssid[64] = {0};
+    char password[64] = {0};
+
+    httpd_req_get_hdr_value_str(req, "my-connect-ssid", ssid, sizeof(ssid));
+    httpd_req_get_hdr_value_str(req, "my-connect-pswd", password, sizeof(password));
+
+    rsp_len = snprintf(response, sizeof(response), "{\"ssid\":\"%s\",\"password\":\"%s\"}", ssid, password);
+    ESP_LOGI(TAG, "SSID: %s, Password: %s", ssid, password);
+    nvs_storage_set_wifi_credentials(ssid, password);
+
+    httpd_resp_set_type(req, "application/json");
+    esp_err_t error = httpd_resp_send(req, response, rsp_len);
+
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error %d while sending params response", error);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Params response sent successfully");
+    }
+
+    return ESP_OK;
 }

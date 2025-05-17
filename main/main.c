@@ -9,7 +9,7 @@
 #include "esp_netif.h"
 #include "lwip/inet.h"
 #include "esp_ota_ops.h"
-
+#include "nvs_storage.h"
 #include "app_local_server.h"
 #include "app_time_sync.h"
 #include "app_wifi.h"
@@ -24,9 +24,8 @@ static const char *TAG = "example";
 
 void app_main(void)
 {
-    // Initialize NVS needed by Wi-Fi
-    ESP_ERROR_CHECK(nvs_flash_init());
-
+    // Initialize NVS
+    nvs_storage_init();
     // Initialize networking stack
     ESP_ERROR_CHECK(esp_netif_init());
 
@@ -40,7 +39,7 @@ void app_main(void)
     esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg)); // move it to app_wifi.c
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
 
