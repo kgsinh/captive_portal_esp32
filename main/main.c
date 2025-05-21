@@ -10,6 +10,7 @@
 #include "lwip/inet.h"
 #include "esp_ota_ops.h"
 #include "nvs_storage.h"
+#include "custom_partition.h"
 #include "app_local_server.h"
 #include "app_time_sync.h"
 #include "app_wifi.h"
@@ -26,6 +27,10 @@ void app_main(void)
 {
     // Initialize NVS
     nvs_storage_init();
+
+    // Initialize custom partition
+    nvs_custom_partition_init();
+
     // Initialize networking stack
     ESP_ERROR_CHECK(esp_netif_init());
 
