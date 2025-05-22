@@ -9,11 +9,15 @@
 #include "esp_netif.h"
 #include "lwip/inet.h"
 #include "esp_ota_ops.h"
+
+// components
 #include "nvs_storage.h"
 #include "custom_partition.h"
+#include "spiffs_storage.h"
 #include "app_local_server.h"
 #include "app_time_sync.h"
 #include "app_wifi.h"
+
 static const char *TAG = "example";
 
 #define EXAMPLE_ESP_WIFI_AP_SSID CONFIG_ESP_WIFI_AP_SSID
@@ -30,6 +34,10 @@ void app_main(void)
 
     // Initialize custom partition
     nvs_custom_partition_init();
+
+    // Initialize SPIFFS
+    spiffs_storage_init();
+    spiffs_storage_test();
 
     // Initialize networking stack
     ESP_ERROR_CHECK(esp_netif_init());
