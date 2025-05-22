@@ -37,7 +37,8 @@ void app_main(void)
 
     // Initialize SPIFFS
     spiffs_storage_init();
-    spiffs_storage_test();
+
+    // spiffs_storage_test();
 
     // Initialize networking stack
     ESP_ERROR_CHECK(esp_netif_init());

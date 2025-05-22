@@ -75,6 +75,8 @@ void spiffs_storage_init(void)
             ESP_LOGI(TAG, "SPIFFS_check() successful");
         }
     }
+
+    spiffs_storage_list_files();
 }
 
 void spiffs_storage_test(void)
@@ -139,4 +141,71 @@ void spiffs_storage_deinit(void)
     {
         ESP_LOGI(TAG, "SPIFFS unmounted");
     }
+}
+
+bool spiffs_storage_create_file(const char *filename)
+{
+    FILE *f = fopen(filename, "w");
+    if (f == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to create file");
+        return false;
+    }
+    fclose(f);
+    return true;
+}
+
+bool spiffs_storage_list_files(void)
+{
+    // List files in the SPIFFS filesystem
+    ESP_LOGI(TAG, "Listing files in SPIFFS");
+    DIR *dir = opendir("/spiffs");
+    if (dir == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to open directory");
+        return false;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        ESP_LOGI(TAG, "Found file: %s", entry->d_name);
+    }
+    closedir(dir);
+    return true;
+}
+
+bool spiffs_storage_file_exists(const char *filename)
+{
+    return true;
+}
+
+int32_t spiffs_storage_get_file_size(const char *filename)
+{
+    return 0;
+}
+
+bool spiffs_storage_delete_file(const char *filename)
+{
+    return true;
+}
+
+bool spiffs_storage_rename_file(const char *old_filename, const char *new_filename)
+{
+    return true;
+}
+
+bool spiffs_storage_write_file(const char *filename, const char *data, bool append)
+{
+    return true;
+}
+
+bool spiffs_storage_read_file(const char *filename, char *buffer, size_t buffer_size)
+{
+    return true;
+}
+
+bool spiffs_storage_read_file_line(const char *filename, char *buffer, size_t buffer_size)
+{
+    return true;
 }
