@@ -1,5 +1,3 @@
-
-// Components
 #include <sys/param.h>
 #include "esp_event.h"
 #include "esp_log.h"
@@ -10,13 +8,14 @@
 #include "lwip/inet.h"
 #include "esp_ota_ops.h"
 
-// components
+// Components
 #include "nvs_storage.h"
 #include "custom_partition.h"
 #include "spiffs_storage.h"
 #include "app_local_server.h"
 #include "app_time_sync.h"
 #include "app_wifi.h"
+#include "test_spiffs_storage.h"
 
 static const char *TAG = "example";
 
@@ -35,8 +34,12 @@ void app_main(void)
     // Initialize custom partition
     nvs_custom_partition_init();
 
+    UNITY_BEGIN();
+    RUN_TEST(test_spiffs_storage);
+    UNITY_END();
+
     // Initialize SPIFFS
-    spiffs_storage_init();
+    // spiffs_storage_init();
 
     // spiffs_storage_test();
 

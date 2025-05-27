@@ -159,7 +159,9 @@ bool spiffs_storage_list_files(void)
 {
     // List files in the SPIFFS filesystem
     ESP_LOGI(TAG, "Listing files in SPIFFS");
+    // Open the directory
     DIR *dir = opendir("/spiffs");
+
     if (dir == NULL)
     {
         ESP_LOGE(TAG, "Failed to open directory");
@@ -167,45 +169,156 @@ bool spiffs_storage_list_files(void)
     }
 
     struct dirent *entry;
+    // Iterate through the directory entries
     while ((entry = readdir(dir)) != NULL)
     {
         ESP_LOGI(TAG, "Found file: %s", entry->d_name);
     }
+
     closedir(dir);
+
     return true;
 }
 
 bool spiffs_storage_file_exists(const char *filename)
 {
+    struct stat st;
+
+    // Check if the file exists by trying to get its status
+    if (stat(filename, &st) != 0)
+    {
+        ESP_LOGI(TAG, "File does not exist: %s", filename);
+        return false;
+    }
+    ESP_LOGI(TAG, "File exists: %s", filename);
+
     return true;
 }
 
 int32_t spiffs_storage_get_file_size(const char *filename)
 {
-    return 0;
+    struct stat st;
+    // Check if the file exists
+    if (stat(filename, &st) != 0)
+    {
+        ESP_LOGE(TAG, "File does not exist: %s", filename);
+        return -1; // File does not exist
+    }
+
+    ESP_LOGI(TAG, "File size of '%s': %d bytes", filename, (int)st.st_size);
+
+    if (st.st_size < 0)
+    {
+        ESP_LOGE(TAG, "Error getting file size for '%s'", filename);
+        return -1; // Error getting file size
+    }
+
+    return (int32_t)st.st_size;
 }
 
 bool spiffs_storage_delete_file(const char *filename)
 {
+    // Check if file exists
+    struct stat st;
+
+    if (stat(filename, &st) != 0)
+    {
+        ESP_LOGE(TAG, "File does not exist: %s", filename);
+        return false; // File does not exist
+    }
+    // Attempt to delete the file
+    if (unlink(filename) != 0)
+    {
+        ESP_LOGE(TAG, "Failed to delete file: %s", filename);
+        return false;
+    }
+
+    ESP_LOGI(TAG, "File deleted successfully: %s", filename);
+
     return true;
 }
 
 bool spiffs_storage_rename_file(const char *old_filename, const char *new_filename)
 {
+    // Check if the old file exists
+    struct stat st;
+
+    if (stat(old_filename, &st) != 0)
+    {
+        ESP_LOGE(TAG, "Old file does not exist: %s", old_filename);
+        return false; // Old file does not exist
+    }
+
+    // Check if the new file already exists
+    if (stat(new_filename, &st) == 0)
+    {
+        ESP_LOGE(TAG, "New file already exists: %s", new_filename);
+        return false; // New file already exists
+    }
+
+    // Rename the file
+    if (rename(old_filename, new_filename) != 0)
+    {
+        ESP_LOGE(TAG, "Failed to rename file: %s", old_filename);
+        return false;
+    }
+
+    ESP_LOGI(TAG, "File renamed successfully: %s -> %s", old_filename, new_filename);
+
     return true;
 }
 
 bool spiffs_storage_write_file(const char *filename, const char *data, bool append)
 {
+    FILE *f;
+    if (append)
+    {
+        f = fopen(filename, "a"); // Open for appending
+    }
+    else
+    {
+        f = fopen(filename, "w"); // Open for writing (overwrite)
+    }
+    if (f == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to open file for writing: %s", filename);
+        return false;
+    }
+    fprintf(f, "%s", data);
+    fclose(f);
     return true;
 }
 
 bool spiffs_storage_read_file(const char *filename, char *buffer, size_t buffer_size)
 {
+    FILE *f = fopen(filename, "r");
+    if (f == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to open file for reading: %s", filename);
+        return false;
+    }
+    fread(buffer, 1, buffer_size, f);
+    fclose(f);
     return true;
 }
 
 bool spiffs_storage_read_file_line(const char *filename, char *buffer, size_t buffer_size)
 {
+    FILE *f = fopen(filename, "r");
+    if (f == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to open file for reading: %s", filename);
+        return false;
+    }
+    // Read a single line from the file
+    if (fgets(buffer, buffer_size, f) == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to read line from file: %s", filename);
+        fclose(f);
+        return false;
+    }
+
+    fclose(f);
+
     return true;
 }
