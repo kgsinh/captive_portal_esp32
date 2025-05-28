@@ -5,6 +5,8 @@
 #include "unity.h"
 #include <stdio.h>
 #include <string.h>
+#include "esp_log.h"
+#include "esp_err.h"
 
 #define TEST_FILE_NAME "/spiffs/test_file.txt"
 #define TEST_FILE_CONTENT "This is a test file for SPIFFS storage."

@@ -151,6 +151,7 @@ bool spiffs_storage_create_file(const char *filename)
         ESP_LOGE(TAG, "Failed to create file");
         return false;
     }
+    ESP_LOGI(TAG, "File created successfully: %s", filename);
     fclose(f);
     return true;
 }
@@ -199,10 +200,9 @@ int32_t spiffs_storage_get_file_size(const char *filename)
 {
     struct stat st;
     // Check if the file exists
-    if (stat(filename, &st) != 0)
+    if (!spiffs_storage_file_exists(filename))
     {
-        ESP_LOGE(TAG, "File does not exist: %s", filename);
-        return -1; // File does not exist
+        return false;
     }
 
     ESP_LOGI(TAG, "File size of '%s': %d bytes", filename, (int)st.st_size);
@@ -218,14 +218,11 @@ int32_t spiffs_storage_get_file_size(const char *filename)
 
 bool spiffs_storage_delete_file(const char *filename)
 {
-    // Check if file exists
-    struct stat st;
-
-    if (stat(filename, &st) != 0)
+    if (!spiffs_storage_file_exists(filename))
     {
-        ESP_LOGE(TAG, "File does not exist: %s", filename);
-        return false; // File does not exist
+        return false;
     }
+
     // Attempt to delete the file
     if (unlink(filename) != 0)
     {
@@ -271,6 +268,7 @@ bool spiffs_storage_rename_file(const char *old_filename, const char *new_filena
 bool spiffs_storage_write_file(const char *filename, const char *data, bool append)
 {
     FILE *f;
+
     if (append)
     {
         f = fopen(filename, "a"); // Open for appending
@@ -279,12 +277,17 @@ bool spiffs_storage_write_file(const char *filename, const char *data, bool appe
     {
         f = fopen(filename, "w"); // Open for writing (overwrite)
     }
+
     if (f == NULL)
     {
         ESP_LOGE(TAG, "Failed to open file for writing: %s", filename);
         return false;
     }
+    // Write data to the file
     fprintf(f, "%s", data);
+    ESP_LOGI(TAG, "Writing to file: %s", filename);
+    ESP_LOGI(TAG, "Data written to file: %s", data);
+
     fclose(f);
     return true;
 }
@@ -298,6 +301,10 @@ bool spiffs_storage_read_file(const char *filename, char *buffer, size_t buffer_
         return false;
     }
     fread(buffer, 1, buffer_size, f);
+    ESP_LOGI(TAG, "Reading file: %s", filename);
+    ESP_LOGI(TAG, "Data read from file: %s", buffer);
+    // Ensure the buffer is null-terminated
+    buffer[buffer_size - 1] = '\0';
     fclose(f);
     return true;
 }
