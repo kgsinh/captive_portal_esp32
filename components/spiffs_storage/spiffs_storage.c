@@ -200,9 +200,10 @@ int32_t spiffs_storage_get_file_size(const char *filename)
 {
     struct stat st;
     // Check if the file exists
-    if (!spiffs_storage_file_exists(filename))
+    if (stat(filename, &st) != 0)
     {
-        return false;
+        ESP_LOGE(TAG, "File does not exist: %s", filename);
+        return -1; // File does not exist
     }
 
     ESP_LOGI(TAG, "File size of '%s': %d bytes", filename, (int)st.st_size);
