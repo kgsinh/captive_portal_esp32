@@ -10,7 +10,7 @@
 #include "esp_log.h"
 #include "esp_spiffs.h"
 
-void spiffs_storage_init(void);
+bool spiffs_storage_init(void);
 void spiffs_storage_test(void);
 void spiffs_storage_deinit(void);
 

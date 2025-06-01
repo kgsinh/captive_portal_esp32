@@ -2,7 +2,7 @@
 
 #define TAG "SPIFFS_STORAGE"
 
-void spiffs_storage_init(void)
+bool spiffs_storage_init(void)
 {
     ESP_LOGI(TAG, "Initializing SPIFFS");
 
@@ -30,7 +30,7 @@ void spiffs_storage_init(void)
         {
             ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
         }
-        return;
+        return false;
     }
 
     ESP_LOGI(TAG, "Performing SPIFFS_check().");
@@ -38,7 +38,7 @@ void spiffs_storage_init(void)
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "SPIFFS_check() failed (%s)", esp_err_to_name(ret));
-        return;
+        return false;
     }
     else
     {
@@ -51,7 +51,7 @@ void spiffs_storage_init(void)
     {
         ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s). Formatting...", esp_err_to_name(ret));
         esp_spiffs_format(conf.partition_label);
-        return;
+        return false;
     }
     else
     {
@@ -68,7 +68,7 @@ void spiffs_storage_init(void)
         if (ret != ESP_OK)
         {
             ESP_LOGE(TAG, "SPIFFS_check() failed (%s)", esp_err_to_name(ret));
-            return;
+            return false;
         }
         else
         {
@@ -77,6 +77,7 @@ void spiffs_storage_init(void)
     }
 
     spiffs_storage_list_files();
+    return true;
 }
 
 void spiffs_storage_test(void)
