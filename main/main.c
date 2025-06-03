@@ -16,6 +16,7 @@
 #include "app_time_sync.h"
 #include "app_wifi.h"
 #include "test_spiffs_storage.h"
+#include "test_rfid_manager.h"
 
 static const char *TAG = "example";
 
@@ -35,7 +36,8 @@ void app_main(void)
     nvs_custom_partition_init();
 
     UNITY_BEGIN();
-    RUN_TEST(test_spiffs_storage);
+    // RUN_TEST(test_spiffs_storage);
+    RUN_TEST(test_rfid_manager);
     UNITY_END();
 
     // Initialize SPIFFS

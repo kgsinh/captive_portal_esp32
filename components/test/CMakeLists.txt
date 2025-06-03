@@ -1,3 +1,3 @@
-idf_component_register(SRCS "test_spiffs_storage.c"
+idf_component_register(SRCS "test_rfid_manager.c"
                     INCLUDE_DIRS "include"
-                    REQUIRES spiffs_storage unity)
+                    REQUIRES spiffs_storage rfid_manager unity)
