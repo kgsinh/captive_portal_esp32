@@ -28,7 +28,8 @@ bool spiffs_storage_file_exists(const char *filename);
 int32_t spiffs_storage_get_file_size(const char *filename);
 bool spiffs_storage_delete_file(const char *filename);
 bool spiffs_storage_rename_file(const char *old_filename, const char *new_filename);
-bool spiffs_storage_write_file(const char *filename, const char *data, bool append);
+bool spiffs_storage_write_file(const char *filename, const char *data, size_t data_size,
+                               bool append, bool is_binary);
 bool spiffs_storage_read_file(const char *filename, char *buffer, size_t buffer_size);
 bool spiffs_storage_read_file_line(const char *filename, char *buffer, size_t buffer_size);
 bool spiffs_storage_create_file(const char *filename);

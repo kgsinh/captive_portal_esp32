@@ -11,7 +11,7 @@ void test_spiffs_storage(void)
     TEST_ASSERT_TRUE(spiffs_storage_create_file(TEST_FILE_NAME));
 
     // Write to the file
-    TEST_ASSERT_TRUE(spiffs_storage_write_file(TEST_FILE_NAME, TEST_FILE_CONTENT, false));
+    TEST_ASSERT_TRUE(spiffs_storage_write_file(TEST_FILE_NAME, TEST_FILE_CONTENT, sizeof(TEST_FILE_CONTENT), false, true));
 
     // Check if the file exists
     TEST_ASSERT_TRUE(spiffs_storage_file_exists(TEST_FILE_NAME));

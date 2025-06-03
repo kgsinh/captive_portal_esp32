@@ -3,6 +3,18 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "esp_err.h"
+#include "spiffs_storage.h"
+#include "esp_log.h"
+
+// RFID card structure
+typedef struct
+{
+    uint32_t card_id;   // Unique identifier for the card
+    uint8_t active;     // Active status of the card (0: inactive, 1: active)
+    char name[32];      // Name associated with the card
+    uint32_t timestamp; // Timestamp of the last access
+} rfid_card_t;
 
 // Initialization
 esp_err_t rfid_manager_init(void);

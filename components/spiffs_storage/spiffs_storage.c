@@ -267,26 +267,41 @@ bool spiffs_storage_rename_file(const char *old_filename, const char *new_filena
     return true;
 }
 
-bool spiffs_storage_write_file(const char *filename, const char *data, bool append)
+bool spiffs_storage_write_file(const char *filename, const char *data, size_t data_size, bool append, bool is_binary)
 {
-    FILE *f;
-
-    if (append)
+    if (!filename || !data || data_size == 0)
     {
-        f = fopen(filename, "a"); // Open for appending
+        ESP_LOGE(TAG, "Invalid arguments to spiffs_storage_write_file");
+        return false;
+    }
+
+    const char *mode = (is_binary ? (append ? "ab" : "wb") : (append ? "a" : "w"));
+    FILE *f = fopen(filename, mode);
+    if (!f)
+    {
+        ESP_LOGE(TAG, "Failed to open file: %s", filename);
+        return false;
+    }
+
+    bool result = false;
+    if (is_binary)
+    {
+        size_t written = fwrite(data, 1, data_size, f);
+        result = (written == data_size);
+        if (!result)
+        {
+            ESP_LOGE(TAG, "Binary write failed: expected %zu, got %zu", data_size, written);
+        }
     }
     else
     {
-        f = fopen(filename, "w"); // Open for writing (overwrite)
+        result = (fprintf(f, "%s", (const char *)data) >= 0);
+        if (!result)
+        {
+            ESP_LOGE(TAG, "Text write failed to file: %s", filename);
+        }
     }
 
-    if (f == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to open file for writing: %s", filename);
-        return false;
-    }
-    // Write data to the file
-    fprintf(f, "%s", data);
     ESP_LOGI(TAG, "Writing to file: %s", filename);
     ESP_LOGI(TAG, "Data written to file: %s", data);
 

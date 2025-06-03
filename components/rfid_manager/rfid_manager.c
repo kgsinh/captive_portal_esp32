@@ -1,15 +1,5 @@
 #include <stdio.h>
 #include "rfid_manager.h"
-#include "spiffs_storage.h"
-
-// RFID card structure
-typedef struct
-{
-    uint32_t card_id;   // Unique identifier for the card
-    uint8_t active;     // Active status of the card (0: inactive, 1: active)
-    char name[32];      // Name associated with the card
-    uint32_t timestamp; // Timestamp of the last access
-} rfid_card_t;
 
 // RFID database header
 typedef struct
@@ -38,7 +28,7 @@ esp_err_t rfid_manager_load_defaults(void)
     if (!spiffs_storage_file_exists("/spiffs/rfid_database.bin"))
     {
         rfid_database_t default_db = {0, 200, 0}; // Initialize with 0 cards, max 200 cards
-        spiffs_storage_write_file("/spiffs/rfid_database.bin", (const char *)&default_db, false);
+        spiffs_storage_write_file("/spiffs/rfid_database.bin", (const char *)&default_db, sizeof(default_db), false, true);
     }
     return ESP_OK;
 }
@@ -76,8 +66,8 @@ esp_err_t rfid_manager_add_card(uint32_t card_id, const char *name)
 
         // Write the updated database back to file
         db.card_count++;
-        spiffs_storage_write_file("/spiffs/rfid_database.bin", (const char *)&db, false);
-        spiffs_storage_write_file("/spiffs/rfid_cards.bin", (const char *)&new_card, true);
+        spiffs_storage_write_file("/spiffs/rfid_database.bin", (const char *)&db, sizeof(db), false, true);
+        spiffs_storage_write_file("/spiffs/rfid_cards.bin", (const char *)&new_card, sizeof(new_card), true, true);
         return ESP_OK;
     }
     else
@@ -114,9 +104,16 @@ esp_err_t rfid_manager_remove_card(uint32_t card_id)
             }
             db.card_count--;
 
+            size_t new_size = db.card_count * sizeof(rfid_card_t);
             // Write the updated database back to file
-            spiffs_storage_write_file("/spiffs/rfid_database.bin", (const char *)&db, false);
-            spiffs_storage_write_file("/spiffs/rfid_cards.bin", (const char *)cards, db.card_count * sizeof(rfid_card_t));
+            spiffs_storage_write_file("/spiffs/rfid_database.bin", (const char *)&db, sizeof(db), false, true);
+            bool write_ok = spiffs_storage_write_file("/spiffs/rfid_cards.bin", (const char *)cards, new_size, false, true);
+
+            if (!write_ok)
+            {
+                return ESP_FAIL;
+            }
+
             return ESP_OK;
         }
     }
@@ -195,7 +192,7 @@ esp_err_t rfid_manager_save_to_file(void)
     }
 
     // Write the database back to file
-    if (!spiffs_storage_write_file("/spiffs/rfid_database.bin", (const char *)&db, false))
+    if (!spiffs_storage_write_file("/spiffs/rfid_database.bin", (const char *)&db, sizeof(db), false, true))
     {
         return ESP_FAIL; // Failed to write database
     }
@@ -232,7 +229,7 @@ esp_err_t rfid_manager_format_database(void)
     rfid_database_t db = {0, 200, 0}; // Initialize with 0 cards, max 200 cards
 
     // Write the new database to file
-    if (!spiffs_storage_write_file("/spiffs/rfid_database.bin", (const char *)&db, false))
+    if (!spiffs_storage_write_file("/spiffs/rfid_database.bin", (const char *)&db, sizeof(db), false, true))
     {
         return ESP_FAIL; // Failed to write database
     }
