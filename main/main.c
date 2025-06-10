@@ -35,13 +35,19 @@ void app_main(void)
     // Initialize custom partition
     nvs_custom_partition_init();
 
-    UNITY_BEGIN();
-    // RUN_TEST(test_spiffs_storage);
-    RUN_TEST(test_rfid_manager);
-    UNITY_END();
+    // UNITY_BEGIN();
+    // // RUN_TEST(test_spiffs_storage);
+    // RUN_TEST(test_rfid_manager);
+    // UNITY_END();
 
     // Initialize SPIFFS
-    // spiffs_storage_init();
+    spiffs_storage_init();
+
+    // Initialize RFID manager
+    rfid_manager_init();
+
+    // Load default RFID cards if needed
+    rfid_manager_load_defaults();
 
     // spiffs_storage_test();
 

@@ -3,9 +3,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include "esp_err.h"
-#include "spiffs_storage.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
+#include "spiffs_storage.h"
 
 // RFID card structure
 typedef struct
@@ -34,5 +38,6 @@ esp_err_t rfid_manager_load_from_file(void);
 // Utility Functions
 esp_err_t rfid_manager_format_database(void);
 bool rfid_manager_is_database_valid(void);
+esp_err_t rfid_manager_get_card_list_json(char *buffer, size_t buffer_len);
 
 #endif // RFID_MANAGER_H

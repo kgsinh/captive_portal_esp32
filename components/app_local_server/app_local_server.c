@@ -19,6 +19,7 @@
 #include "nvs_storage.h"
 #include "app_local_server.h"
 #include "dns_server.h"
+#include "rfid_manager.h"
 
 #define URI_HANDLER_MARGIN (1u) // Margin for the URI Handlers
 #define URI_HANDLERS_COUNT (sizeof(uri_handlers) / sizeof(uri_handlers[0]))
@@ -92,6 +93,7 @@ static int16_t get_humidity(void);
 static int16_t get_temperature(void);
 bool get_data_rsp_string(char *key, char *buffer, uint16_t len);
 static esp_err_t http_server_wifi_connect_handler(httpd_req_t *req);
+static esp_err_t rfid_manager_list_cards_handler(httpd_req_t *req);
 
 static const httpd_uri_t uri_handlers[] = {
     {"/jquery-3.3.1.min.js", HTTP_GET, http_server_j_query_handler, NULL},
@@ -105,7 +107,10 @@ static const httpd_uri_t uri_handlers[] = {
     {"/localTime", HTTP_GET, http_server_time_handler, NULL},
     {"/Sensor", HTTP_GET, http_server_get_sensor_data_handler, NULL},
     {"/getData", HTTP_POST, http_server_get_data_handler, NULL},
-    {"/wifiConnect", HTTP_POST, http_server_wifi_connect_handler, NULL}};
+    {"/wifiConnect", HTTP_POST, http_server_wifi_connect_handler, NULL},
+    // RFID Manager Handlers
+    {"/api/rfid/cards", HTTP_GET, rfid_manager_list_cards_handler, NULL},
+};
 
 // FUNCTIONS
 bool app_local_server_init(void)
@@ -830,5 +835,62 @@ static esp_err_t http_server_wifi_connect_handler(httpd_req_t *req)
         ESP_LOGI(TAG, "Params response sent successfully");
     }
 
+    return ESP_OK;
+}
+
+static esp_err_t rfid_manager_list_cards_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "RFID card list requested");
+
+    // Default empty response
+    const char *response = "{\"status\":\"error\",\"message\":\"Failed to get RFID cards\",\"cards\":[]}";
+
+    httpd_resp_set_type(req, "application/json");
+
+    // Check if RFID manager is initialized
+    if (!rfid_manager_is_database_valid())
+    {
+        ESP_LOGE(TAG, "RFID database is not valid");
+        response = "{\"status\":\"error\",\"message\":\"RFID database is not valid\",\"cards\":[]}";
+        httpd_resp_send(req, response, strlen(response));
+        return ESP_OK;
+    }
+
+    // Try to get the card list as JSON
+    esp_err_t result = rfid_manager_get_card_list_json(http_server_buffer, HTTP_SERVER_BUFFER_SIZE);
+
+    if (result == ESP_OK)
+    {
+        // Success - use the generated JSON
+        response = http_server_buffer;
+        ESP_LOGI(TAG, "RFID card list generated successfully");
+    }
+    else if (result == ESP_ERR_NO_MEM)
+    {
+        // Buffer too small
+        ESP_LOGE(TAG, "Buffer too small for RFID card list");
+        response = "{\"status\":\"error\",\"message\":\"Buffer too small for RFID card list\",\"cards\":[]}";
+    }
+    else
+    {
+        // Other error
+        ESP_LOGE(TAG, "Failed to get RFID card list: %s", esp_err_to_name(result));
+        char error_msg[100];
+        snprintf(error_msg, sizeof(error_msg),
+                 "{\"status\":\"error\",\"message\":\"Failed to get RFID card list: %s\",\"cards\":[]}",
+                 esp_err_to_name(result));
+        response = error_msg;
+    }
+
+    // Send the response
+    esp_err_t error = httpd_resp_send(req, response, strlen(response));
+
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error %d while sending RFID cards response", error);
+        return error;
+    }
+
+    ESP_LOGI(TAG, "RFID cards response sent successfully");
     return ESP_OK;
 }
