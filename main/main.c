@@ -15,8 +15,6 @@
 #include "app_local_server.h"
 #include "app_time_sync.h"
 #include "app_wifi.h"
-#include "test_spiffs_storage.h"
-#include "test_rfid_manager.h"
 
 static const char *TAG = "example";
 
@@ -35,11 +33,6 @@ void app_main(void)
     // Initialize custom partition
     nvs_custom_partition_init();
 
-    // UNITY_BEGIN();
-    // // RUN_TEST(test_spiffs_storage);
-    // RUN_TEST(test_rfid_manager);
-    // UNITY_END();
-
     // Initialize SPIFFS
     spiffs_storage_init();
 
@@ -48,8 +41,6 @@ void app_main(void)
 
     // Load default RFID cards if needed
     rfid_manager_load_defaults();
-
-    // spiffs_storage_test();
 
     // Initialize networking stack
     ESP_ERROR_CHECK(esp_netif_init());
@@ -83,7 +74,7 @@ void app_main(void)
     ESP_LOGI(TAG, "Set up softAP with IP: %s", ip_addr);
 
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:'%s' password:'%s'",
-             EXAMPLE_ESP_WIFI_AP_SSID, CONFIG_ESP_WIFI_PASSWORD);
+             EXAMPLE_ESP_WIFI_AP_SSID, CONFIG_ESP_WIFI_AP_PASSWORD);
 
     time_sync_init();
 

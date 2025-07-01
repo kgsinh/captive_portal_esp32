@@ -93,7 +93,12 @@ static int16_t get_humidity(void);
 static int16_t get_temperature(void);
 bool get_data_rsp_string(char *key, char *buffer, uint16_t len);
 static esp_err_t http_server_wifi_connect_handler(httpd_req_t *req);
-static esp_err_t rfid_manager_list_cards_handler(httpd_req_t *req);
+static esp_err_t http_server_rfid_manager_list_cards_handler(httpd_req_t *req);
+static esp_err_t http_server_rfid_manager_add_card_handler(httpd_req_t *req);
+static esp_err_t http_server_rfid_manager_remove_card_handler(httpd_req_t *req);
+static esp_err_t http_server_rfid_manager_get_card_count_handler(httpd_req_t *req);
+static esp_err_t http_server_rfid_manager_check_card_handler(httpd_req_t *req);
+static esp_err_t http_server_rfid_manager_reset_cards_handler(httpd_req_t *req);
 
 static const httpd_uri_t uri_handlers[] = {
     {"/jquery-3.3.1.min.js", HTTP_GET, http_server_j_query_handler, NULL},
@@ -109,7 +114,13 @@ static const httpd_uri_t uri_handlers[] = {
     {"/getData", HTTP_POST, http_server_get_data_handler, NULL},
     {"/wifiConnect", HTTP_POST, http_server_wifi_connect_handler, NULL},
     // RFID Manager Handlers
-    {"/api/rfid/cards", HTTP_GET, rfid_manager_list_cards_handler, NULL},
+    {"/cards/get", HTTP_GET, http_server_rfid_manager_list_cards_handler, NULL},
+    {"/cards/add", HTTP_POST, http_server_rfid_manager_add_card_handler, NULL},
+    {"/cards/remove", HTTP_DELETE, http_server_rfid_manager_remove_card_handler, NULL},
+    {"/cards/count", HTTP_GET, http_server_rfid_manager_get_card_count_handler, NULL},
+    {"/cards/check", HTTP_GET, http_server_rfid_manager_check_card_handler, NULL},
+    {"/cards/reset", HTTP_POST, http_server_rfid_manager_reset_cards_handler, NULL},
+
 };
 
 // FUNCTIONS
@@ -838,7 +849,7 @@ static esp_err_t http_server_wifi_connect_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-static esp_err_t rfid_manager_list_cards_handler(httpd_req_t *req)
+static esp_err_t http_server_rfid_manager_list_cards_handler(httpd_req_t *req)
 {
     ESP_LOGI(TAG, "RFID card list requested");
 
@@ -892,5 +903,243 @@ static esp_err_t rfid_manager_list_cards_handler(httpd_req_t *req)
     }
 
     ESP_LOGI(TAG, "RFID cards response sent successfully");
+    return ESP_OK;
+}
+
+static esp_err_t http_server_rfid_manager_add_card_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "RFID card add requested");
+
+    // Read the request body
+    char buf[256];
+    int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (ret <= 0)
+    {
+        ESP_LOGE(TAG, "Failed to receive request data");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    buf[ret] = '\0';
+
+    // Parse the JSON request
+    cJSON *json = cJSON_Parse(buf);
+    if (json == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to parse JSON");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    // Extract the card ID
+    cJSON *card_id_obj = cJSON_GetObjectItemCaseSensitive(json, "id");
+    cJSON *card_name_obj = cJSON_GetObjectItemCaseSensitive(json, "nm");
+
+    if (!cJSON_IsNumber(card_id_obj) || !(cJSON_IsString(card_name_obj)))
+    {
+        ESP_LOGE(TAG, "Invalid or missing 'card_id' key in JSON");
+        cJSON_Delete(json);
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "{\"status\":\"error\",\"message\":\"Invalid or missing card_id\"}", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
+
+    const char *card_id_str = card_id_obj->valuestring;
+
+    // Convert string to uint32_t
+    //    uint32_t card_id = (uint32_t)strtoul(card_id_str, NULL, 10);
+    uint32_t card_id = (uint32_t)card_id_obj->valueint;
+    if (card_id == 0)
+    {
+        ESP_LOGE(TAG, "Invalid card ID: %lu", card_id);
+        cJSON_Delete(json);
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "{\"status\":\"error\",\"message\":\"Invalid card_id\"}", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
+
+    // Add the card to the RFID manager
+    esp_err_t result = rfid_manager_add_card(card_id,
+                                             card_name_obj->valuestring);
+
+    // Clean up JSON object
+    cJSON_Delete(json);
+
+    if (result == ESP_OK)
+    {
+        ESP_LOGI(TAG, "RFID card added successfully: %lu", card_id);
+        httpd_resp_set_status(req, "201 Created");
+        httpd_resp_send(req, "{\"status\":\"success\",\"message\":\"Card added successfully\"}", HTTPD_RESP_USE_STRLEN);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to add RFID card: %s", esp_err_to_name(result));
+        httpd_resp_send_500(req);
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t http_server_rfid_manager_remove_card_handler(httpd_req_t *req)
+{
+    char urlBuffer[256];
+    uint16_t lengthOfURI = 0;
+    char idStrBuffer[48];
+    uint32_t cardId = 0;
+
+    ESP_LOGI(TAG, "/api/rfid/cards/{id} (DELETE) requested: %s", req->uri);
+
+    memset(idStrBuffer, 0, sizeof(idStrBuffer));
+
+    lengthOfURI = httpd_req_get_url_query_len(req) + 1; // +1 for null terminator
+
+    if (lengthOfURI > 1)
+    {
+        if (httpd_req_get_url_query_str(req, urlBuffer, lengthOfURI) == ESP_OK)
+        {
+            ESP_LOGI(TAG, "urlBuffer:%s", urlBuffer);
+
+            if (httpd_query_key_value(urlBuffer, "id", idStrBuffer, sizeof(idStrBuffer)) == ESP_OK)
+            {
+                ESP_LOGI(TAG, "idStrBuffer:%s", idStrBuffer);
+
+                cardId = strtoul(idStrBuffer, NULL, 10);
+
+                if (cardId == 0)
+                {
+                    ESP_LOGE(TAG, "Card ID missing in URI");
+                    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Card ID missing in URI");
+                    return ESP_FAIL;
+                }
+            }
+        }
+    }
+
+    esp_err_t ret = rfid_manager_remove_card(cardId);
+
+    if (ret == ESP_OK)
+    {
+        httpd_resp_send(req, "{\"status\":\"success\", \"message\":\"Card removed\"}", HTTPD_RESP_USE_STRLEN);
+    }
+    else if (ret == ESP_ERR_NOT_FOUND)
+    {
+        char err_msg[100];
+        sprintf(err_msg, "Card ID %ld not found", cardId);
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, err_msg);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to remove RFID card: %s (Error: %s)", esp_err_to_name(ret), ret == ESP_FAIL ? "Generic Fail" : "Other");
+        httpd_resp_send_500(req);
+    }
+    return ESP_OK;
+}
+
+static esp_err_t http_server_rfid_manager_get_card_count_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "RFID card count requested");
+
+    // Get the card count from the RFID manager
+    int card_count = rfid_manager_get_card_count();
+
+    // Prepare the JSON response
+    char response[50];
+    snprintf(response, sizeof(response), "{\"card_count\":%d}", card_count);
+
+    httpd_resp_set_type(req, "application/json");
+    esp_err_t error = httpd_resp_send(req, response, strlen(response));
+
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error %d while sending RFID card count response", error);
+        return error;
+    }
+
+    ESP_LOGI(TAG, "RFID card count response sent successfully");
+    return ESP_OK;
+}
+
+static esp_err_t http_server_rfid_manager_check_card_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "RFID card check requested");
+
+    // Read the request body
+    char buf[256];
+    int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (ret <= 0)
+    {
+        ESP_LOGE(TAG, "Failed to receive request data");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    buf[ret] = '\0';
+
+    // Parse the JSON request
+    cJSON *json = cJSON_Parse(buf);
+    if (json == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to parse JSON");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    // Extract the card ID
+    cJSON *card_id_obj = cJSON_GetObjectItemCaseSensitive(json, "card_id");
+    if (!cJSON_IsString(card_id_obj) || (card_id_obj->valuestring == NULL))
+    {
+        ESP_LOGE(TAG, "Invalid or missing 'card_id' key in JSON");
+        cJSON_Delete(json);
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "{\"status\":\"error\",\"message\":\"Invalid or missing card_id\"}", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
+
+    const char *card_id_str = card_id_obj->valuestring;
+
+    // Convert string to uint32_t
+    uint32_t card_id = (uint32_t)strtoul(card_id_str, NULL, 10);
+
+    // Check if the card exists in the RFID manager
+    esp_err_t check_result = rfid_manager_check_card(card_id);
+    bool exists = (check_result == ESP_OK);
+
+    // Clean up JSON object
+    cJSON_Delete(json);
+
+    // Prepare the response
+    char response[50];
+    snprintf(response, sizeof(response), "{\"exists\":%s}", exists ? "true" : "false");
+
+    httpd_resp_set_type(req, "application/json");
+    esp_err_t error = httpd_resp_send(req, response, strlen(response));
+
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error %d while sending RFID card check response", error);
+        return error;
+    }
+
+    ESP_LOGI(TAG, "RFID card check response sent successfully");
+    return ESP_OK;
+}
+
+static esp_err_t http_server_rfid_manager_reset_cards_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "RFID card reset requested");
+
+    // Reset the RFID card database
+    esp_err_t result = rfid_manager_format_database();
+
+    if (result == ESP_OK)
+    {
+        ESP_LOGI(TAG, "RFID card database reset successfully");
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "{\"status\":\"success\",\"message\":\"RFID card database reset successfully\"}", HTTPD_RESP_USE_STRLEN);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to reset RFID card database: %s", esp_err_to_name(result));
+        httpd_resp_send_500(req);
+    }
+
     return ESP_OK;
 }

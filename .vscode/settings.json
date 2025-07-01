@@ -14,6 +14,8 @@
     "idf.flashType": "UART",
     "files.associations": {
         "esp_event.h": "c",
-        "spiffs_storage.h": "c"
+        "spiffs_storage.h": "c",
+        "freertos.h": "c",
+        "app_wifi.h": "c"
     }
 }

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "esp_log.h"
+#include <time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -43,11 +43,18 @@ esp_err_t rfid_manager_init(void)
         }
     }
 
-    // Initialize SPIFFS storage
-    if (!spiffs_storage_init())
+    // Initialize SPIFFS storage only if not already initialized
+    if (!spiffs_storage_is_initialized())
     {
-        ESP_LOGE(TAG, "Failed to initialize SPIFFS storage");
-        return ESP_FAIL;
+        if (!spiffs_storage_init())
+        {
+            ESP_LOGE(TAG, "Failed to initialize SPIFFS storage");
+            return ESP_FAIL;
+        }
+    }
+    else
+    {
+        ESP_LOGI(TAG, "SPIFFS already initialized, skipping initialization");
     }
 
     // Check if the database exists, if not create it
@@ -291,9 +298,22 @@ esp_err_t rfid_manager_remove_card(uint32_t card_id)
         return ESP_FAIL;
     }
 
-    // Write the updated cards back to file
-    size_t new_size = db.card_count * sizeof(rfid_card_t);
-    bool write_ok = spiffs_storage_write_file(RFID_CARDS_PATH, (const char *)cards, new_size, false, true);
+    // Write the updated cards back to file or delete if no cards remain
+    bool write_ok = true;
+    if (db.card_count > 0)
+    {
+        size_t new_size = db.card_count * sizeof(rfid_card_t);
+        write_ok = spiffs_storage_write_file(RFID_CARDS_PATH, (const char *)cards, new_size, false, true);
+    }
+    else
+    {
+        // No cards remaining, delete the cards file
+        if (spiffs_storage_file_exists(RFID_CARDS_PATH))
+        {
+            write_ok = spiffs_storage_delete_file(RFID_CARDS_PATH);
+        }
+    }
+
     free(cards);
 
     if (!write_ok)

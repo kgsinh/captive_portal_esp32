@@ -11,6 +11,7 @@
 #include "esp_spiffs.h"
 
 bool spiffs_storage_init(void);
+bool spiffs_storage_is_initialized(void);
 void spiffs_storage_test(void);
 void spiffs_storage_deinit(void);
 

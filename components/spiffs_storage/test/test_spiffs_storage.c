@@ -1,11 +1,15 @@
-#include "test_spiffs_storage.h"
+#include "spiffs_storage.h"
+#include "unity.h"
 
 static const char *TAG = "TEST_SPIFFS_STORAGE";
 
+#define TEST_FILE_CONTENT "This is a test file content."
+#define TEST_FILE_NAME "/spiffs/test_file.txt"
+
 void test_spiffs_storage(void)
 {
-    // Initialize SPIFFS
-    spiffs_storage_init();
+    // Initialize SPIFFS storage
+    TEST_ASSERT_TRUE(spiffs_storage_init());
 
     // Create a file
     TEST_ASSERT_TRUE(spiffs_storage_create_file(TEST_FILE_NAME));
@@ -52,4 +56,10 @@ void test_spiffs_storage(void)
 
     // Deinitialize SPIFFS
     spiffs_storage_deinit();
+}
+
+// Register the test with Unity
+TEST_CASE("SPIFFS Storage Tests", "[spiffs_storage]")
+{
+    test_spiffs_storage();
 }

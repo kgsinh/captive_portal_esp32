@@ -2,8 +2,17 @@
 
 #define TAG "SPIFFS_STORAGE"
 
+static bool spiffs_initialized = false;
+
 bool spiffs_storage_init(void)
 {
+    // Check if already initialized
+    if (spiffs_initialized)
+    {
+        ESP_LOGI(TAG, "SPIFFS already initialized");
+        return true;
+    }
+
     ESP_LOGI(TAG, "Initializing SPIFFS");
 
     esp_vfs_spiffs_conf_t conf = {
@@ -25,6 +34,12 @@ bool spiffs_storage_init(void)
         else if (ret == ESP_ERR_NOT_FOUND)
         {
             ESP_LOGE(TAG, "Failed to find SPIFFS partition");
+        }
+        else if (ret == ESP_ERR_INVALID_STATE)
+        {
+            ESP_LOGI(TAG, "SPIFFS already mounted, marking as initialized");
+            spiffs_initialized = true;
+            return true;
         }
         else
         {
@@ -77,7 +92,13 @@ bool spiffs_storage_init(void)
     }
 
     spiffs_storage_list_files();
+    spiffs_initialized = true;
     return true;
+}
+
+bool spiffs_storage_is_initialized(void)
+{
+    return spiffs_initialized;
 }
 
 void spiffs_storage_test(void)
@@ -133,14 +154,29 @@ void spiffs_storage_test(void)
 
 void spiffs_storage_deinit(void)
 {
+    if (!spiffs_initialized)
+    {
+        ESP_LOGI(TAG, "SPIFFS already deinitialized");
+        return;
+    }
+
     esp_err_t ret = esp_vfs_spiffs_unregister(NULL);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to unregister SPIFFS (%s)", esp_err_to_name(ret));
+        if (ret == ESP_ERR_INVALID_STATE)
+        {
+            ESP_LOGI(TAG, "SPIFFS was not mounted, marking as deinitialized");
+            spiffs_initialized = false;
+        }
+        else
+        {
+            ESP_LOGE(TAG, "Failed to unregister SPIFFS (%s)", esp_err_to_name(ret));
+        }
     }
     else
     {
         ESP_LOGI(TAG, "SPIFFS unmounted");
+        spiffs_initialized = false;
     }
 }
 
@@ -302,27 +338,40 @@ bool spiffs_storage_write_file(const char *filename, const char *data, size_t da
         }
     }
 
-    ESP_LOGI(TAG, "Writing to file: %s", filename);
-    ESP_LOGI(TAG, "Data written to file: %s", data);
+    if (result)
+    {
+        ESP_LOGI(TAG, "Data written to file:");
+    }
 
     fclose(f);
-    return true;
+    return result;
 }
 
 bool spiffs_storage_read_file(const char *filename, char *buffer, size_t buffer_size)
 {
-    FILE *f = fopen(filename, "r");
+    if (!filename || !buffer || buffer_size == 0)
+    {
+        ESP_LOGE(TAG, "Invalid arguments to spiffs_storage_read_file");
+        return false;
+    }
+
+    FILE *f = fopen(filename, "rb"); // Open in binary mode
     if (f == NULL)
     {
         ESP_LOGE(TAG, "Failed to open file for reading: %s", filename);
         return false;
     }
-    fread(buffer, 1, buffer_size, f);
-    ESP_LOGI(TAG, "Reading file: %s", filename);
-    ESP_LOGI(TAG, "Data read from file: %s", buffer);
-    // Ensure the buffer is null-terminated
-    buffer[buffer_size - 1] = '\0';
+
+    size_t bytes_read = fread(buffer, 1, buffer_size, f);
     fclose(f);
+
+    if (bytes_read != buffer_size)
+    {
+        ESP_LOGW(TAG, "Read %zu bytes, expected %zu from file: %s", bytes_read, buffer_size, filename);
+        // Don't return false here as partial reads might be valid
+    }
+
+    ESP_LOGI(TAG, "Successfully read %zu bytes from file: %s", bytes_read, filename);
     return true;
 }
 
