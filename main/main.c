@@ -15,6 +15,7 @@
 #include "app_local_server.h"
 #include "app_time_sync.h"
 #include "app_wifi.h"
+#include "rfid_manager.h"
 
 static const char *TAG = "example";
 
@@ -75,6 +76,11 @@ void app_main(void)
 
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:'%s' password:'%s'",
              EXAMPLE_ESP_WIFI_AP_SSID, CONFIG_ESP_WIFI_AP_PASSWORD);
+
+    ESP_LOGI(TAG, "Wifi credentials:");
+    ESP_LOGI(TAG, "SSID: %s", CONFIG_ESP_WIFI_SSID);
+    ESP_LOGI(TAG, "Password: %s", CONFIG_ESP_WIFI_PASSWORD);
+    esp_log_level_set("wifi", ESP_LOG_DEBUG);
 
     time_sync_init();
 
