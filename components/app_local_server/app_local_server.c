@@ -17,6 +17,7 @@
 #include "esp_ota_ops.h"
 #include <cJSON.h>
 #include "nvs_storage.h"
+#include "spiffs_storage.h"
 #include "app_local_server.h"
 #include "dns_server.h"
 #include "rfid_manager.h"
@@ -49,6 +50,12 @@ extern const char favicon_ico_start[] asm("_binary_favicon_ico_start");
 extern const char favicon_ico_end[] asm("_binary_favicon_ico_end");
 extern const char root_start[] asm("_binary_root_html_start");
 extern const char root_end[] asm("_binary_root_html_end");
+extern const char rfid_html_start[] asm("_binary_rfid_html_start");
+extern const char rfid_html_end[] asm("_binary_rfid_html_end");
+extern const char rfid_css_start[] asm("_binary_rfid_css_start");
+extern const char rfid_css_end[] asm("_binary_rfid_css_end");
+extern const char rfid_js_start[] asm("_binary_rfid_js_start");
+extern const char rfid_js_end[] asm("_binary_rfid_js_end");
 
 static httpd_handle_t http_server_handle = NULL;
 // Queue Handle used to manipulate the main queue of events
@@ -99,6 +106,10 @@ static esp_err_t http_server_rfid_manager_remove_card_handler(httpd_req_t *req);
 static esp_err_t http_server_rfid_manager_get_card_count_handler(httpd_req_t *req);
 static esp_err_t http_server_rfid_manager_check_card_handler(httpd_req_t *req);
 static esp_err_t http_server_rfid_manager_reset_cards_handler(httpd_req_t *req);
+static esp_err_t http_server_rfid_manager_get_default_cards_handler(httpd_req_t *req);
+static esp_err_t http_server_rfid_html_handler(httpd_req_t *req);
+static esp_err_t http_server_rfid_css_handler(httpd_req_t *req);
+static esp_err_t http_server_rfid_js_handler(httpd_req_t *req);
 
 static const httpd_uri_t uri_handlers[] = {
     {"/jquery-3.3.1.min.js", HTTP_GET, http_server_j_query_handler, NULL},
@@ -115,11 +126,17 @@ static const httpd_uri_t uri_handlers[] = {
     {"/wifiConnect", HTTP_POST, http_server_wifi_connect_handler, NULL},
     // RFID Manager Handlers
     {"/cards/get", HTTP_GET, http_server_rfid_manager_list_cards_handler, NULL},
+    {"/cards/defaults", HTTP_GET, http_server_rfid_manager_get_default_cards_handler, NULL},
     {"/cards/add", HTTP_POST, http_server_rfid_manager_add_card_handler, NULL},
     {"/cards/remove", HTTP_DELETE, http_server_rfid_manager_remove_card_handler, NULL},
     {"/cards/count", HTTP_GET, http_server_rfid_manager_get_card_count_handler, NULL},
     {"/cards/check", HTTP_GET, http_server_rfid_manager_check_card_handler, NULL},
     {"/cards/reset", HTTP_POST, http_server_rfid_manager_reset_cards_handler, NULL},
+    // RFID Web Interface Files
+    {"/rfid.html", HTTP_GET, http_server_rfid_html_handler, NULL},
+    {"/rfid", HTTP_GET, http_server_rfid_html_handler, NULL},
+    {"/rfid.css", HTTP_GET, http_server_rfid_css_handler, NULL},
+    {"/rfid.js", HTTP_GET, http_server_rfid_js_handler, NULL},
 
 };
 
@@ -519,6 +536,105 @@ static esp_err_t http_server_ota_update_handler(httpd_req_t *req)
         http_server_monitor_send_msg(HTTP_MSG_WIFI_OTA_UPDATE_FAILED);
     }
     return ESP_OK;
+}
+
+static esp_err_t http_server_rfid_manager_get_default_cards_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "RFID default cards requested");
+
+    // Set content type
+    httpd_resp_set_type(req, "application/json");
+
+    // Create JSON response with hardcoded default cards
+    // These match the default_cards array in rfid_manager.c
+    const char *default_cards_json =
+        "{"
+        "\"status\":\"ok\","
+        "\"count\":3,"
+        "\"cards\":["
+        "{\"id\":305419896,\"name\":\"Admin Card\",\"active\":1,\"timestamp\":0},"
+        "{\"id\":2271560481,\"name\":\"User Card 1\",\"active\":1,\"timestamp\":0},"
+        "{\"id\":2882400000,\"name\":\"User Card 2\",\"active\":1,\"timestamp\":0}"
+        "]"
+        "}";
+
+    // Send the response
+    esp_err_t error = httpd_resp_send(req, default_cards_json, strlen(default_cards_json));
+
+    if (error != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error %d while sending default RFID cards response", error);
+        return error;
+    }
+
+    ESP_LOGI(TAG, "Default RFID cards response sent successfully");
+    return ESP_OK;
+}
+
+/*
+ * RFID HTML page handler
+ * @param req HTTP request for which the uri needs to be handled
+ * @return ESP_OK
+ */
+static esp_err_t http_server_rfid_html_handler(httpd_req_t *req)
+{
+    esp_err_t error;
+    ESP_LOGI(TAG, "RFID HTML Requested");
+    httpd_resp_set_type(req, "text/html");
+    error = httpd_resp_send(req, (const char *)rfid_html_start, rfid_html_end - rfid_html_start);
+    if (error != ESP_OK)
+    {
+        ESP_LOGI(TAG, "http_server_rfid_html_handler: Error %d while sending Response", error);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "http_server_rfid_html_handler: Response Sent Successfully");
+    }
+    return error;
+}
+
+/*
+ * RFID CSS handler
+ * @param req HTTP request for which the uri needs to be handled
+ * @return ESP_OK
+ */
+static esp_err_t http_server_rfid_css_handler(httpd_req_t *req)
+{
+    esp_err_t error;
+    ESP_LOGI(TAG, "RFID CSS Requested");
+    httpd_resp_set_type(req, "text/css");
+    error = httpd_resp_send(req, (const char *)rfid_css_start, rfid_css_end - rfid_css_start);
+    if (error != ESP_OK)
+    {
+        ESP_LOGI(TAG, "http_server_rfid_css_handler: Error %d while sending Response", error);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "http_server_rfid_css_handler: Response Sent Successfully");
+    }
+    return error;
+}
+
+/*
+ * RFID JS handler
+ * @param req HTTP request for which the uri needs to be handled
+ * @return ESP_OK
+ */
+static esp_err_t http_server_rfid_js_handler(httpd_req_t *req)
+{
+    esp_err_t error;
+    ESP_LOGI(TAG, "RFID JS Requested");
+    httpd_resp_set_type(req, "application/javascript");
+    error = httpd_resp_send(req, (const char *)rfid_js_start, rfid_js_end - rfid_js_start);
+    if (error != ESP_OK)
+    {
+        ESP_LOGI(TAG, "http_server_rfid_js_handler: Error %d while sending Response", error);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "http_server_rfid_js_handler: Response Sent Successfully");
+    }
+    return error;
 }
 
 /*
@@ -1026,6 +1142,12 @@ static esp_err_t http_server_rfid_manager_remove_card_handler(httpd_req_t *req)
         sprintf(err_msg, "Card ID %ld not found", cardId);
         httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, err_msg);
     }
+    else if (ret == ESP_ERR_NOT_SUPPORTED)
+    {
+        ESP_LOGW(TAG, "Attempted to remove protected admin card: %ld", cardId);
+        httpd_resp_set_status(req, "403 Forbidden");
+        httpd_resp_send(req, "{\"status\":\"error\", \"message\":\"Cannot remove admin card - this card is protected\"}", HTTPD_RESP_USE_STRLEN);
+    }
     else
     {
         ESP_LOGE(TAG, "Failed to remove RFID card: %s (Error: %s)", esp_err_to_name(ret), ret == ESP_FAIL ? "Generic Fail" : "Other");
@@ -1124,21 +1246,62 @@ static esp_err_t http_server_rfid_manager_check_card_handler(httpd_req_t *req)
 
 static esp_err_t http_server_rfid_manager_reset_cards_handler(httpd_req_t *req)
 {
-    ESP_LOGI(TAG, "RFID card reset requested");
+    ESP_LOGI(TAG, "RFID card reset to defaults requested");
 
-    // Reset the RFID card database
-    esp_err_t result = rfid_manager_format_database();
+    // Set content type first
+    httpd_resp_set_type(req, "application/json");
+
+    // Check if SPIFFS is initialized
+    if (!spiffs_storage_is_initialized())
+    {
+        ESP_LOGE(TAG, "SPIFFS storage is not initialized");
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        httpd_resp_send(req, "{\"status\":\"error\",\"message\":\"Storage system not initialized\"}", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+    }
+
+    // Reset the RFID card database to default cards
+    esp_err_t result = rfid_manager_reset_to_defaults();
 
     if (result == ESP_OK)
     {
-        ESP_LOGI(TAG, "RFID card database reset successfully");
+        ESP_LOGI(TAG, "RFID card database reset to defaults successfully");
         httpd_resp_set_status(req, "200 OK");
-        httpd_resp_send(req, "{\"status\":\"success\",\"message\":\"RFID card database reset successfully\"}", HTTPD_RESP_USE_STRLEN);
+        httpd_resp_send(req, "{\"status\":\"success\",\"message\":\"RFID card database reset to defaults successfully\"}", HTTPD_RESP_USE_STRLEN);
     }
     else
     {
-        ESP_LOGE(TAG, "Failed to reset RFID card database: %s", esp_err_to_name(result));
-        httpd_resp_send_500(req);
+        ESP_LOGE(TAG, "Failed to reset RFID card database to defaults: %s", esp_err_to_name(result));
+
+        // Create a safe error message
+        const char *error_name = esp_err_to_name(result);
+        char error_response[256];
+
+        // Ensure the error message is properly escaped for JSON
+        if (result == ESP_ERR_NO_MEM)
+        {
+            snprintf(error_response, sizeof(error_response),
+                     "{\"status\":\"error\",\"message\":\"Insufficient memory to reset database\"}");
+        }
+        else if (result == ESP_FAIL)
+        {
+            snprintf(error_response, sizeof(error_response),
+                     "{\"status\":\"error\",\"message\":\"Storage operation failed\"}");
+        }
+        else if (result == ESP_ERR_NOT_FOUND)
+        {
+            snprintf(error_response, sizeof(error_response),
+                     "{\"status\":\"error\",\"message\":\"Database files not found\"}");
+        }
+        else
+        {
+            snprintf(error_response, sizeof(error_response),
+                     "{\"status\":\"error\",\"message\":\"Reset failed: %s\"}",
+                     error_name);
+        }
+
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        httpd_resp_send(req, error_response, strlen(error_response));
     }
 
     return ESP_OK;

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID Card Management</title>
+    <link rel="stylesheet" href="app.css">
+    <script src="jquery-3.3.1.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>RFID Card Management System</h1>
+    </header>
+
+    <!-- Navigation -->
+    <div id="Navigation">
+        <a href="/" style="color: #1d3557; text-decoration: none; font-weight: bold;">← Back to Main Dashboard</a>
+    </div>
+    <hr>
+
+    <!-- Card Count Display -->
+    <div id="CardCount">
+        <h2>System Status</h2>
+        <label for="card_count">Total Cards Registered: </label>
+        <div id="card_count" style="display: inline; color: #1d3557; font-weight: bold;">Loading...</div>
+    </div>
+    <hr>
+
+    <!-- Add Card Section -->
+    <div id="AddCard">
+        <h2>Add New RFID Card</h2>
+        <section>
+            <input id="card_id" type="number" placeholder="Card ID (e.g., 12345)" min="1" max="4294967295" required>
+            <input id="card_name" type="text" placeholder="Card Name (e.g., John Doe)" maxlength="31" required>
+        </section>
+        <div class="buttons">
+            <input type="button" value="Add Card" onclick="addCard()">
+        </div>
+        <div id="add_status"></div>
+    </div>
+    <hr>
+
+    <!-- Remove Card Section -->
+    <div id="RemoveCard">
+        <h2>Remove RFID Card</h2>
+        <section>
+            <input id="remove_card_id" type="number" placeholder="Card ID to Remove" min="1" max="4294967295" required>
+        </section>
+        <div class="buttons">
+            <input type="button" value="Remove Card" onclick="removeCard()">
+        </div>
+        <div id="remove_status"></div>
+    </div>
+    <hr>
+
+    <!-- Card List Section -->
+    <div id="CardList">
+        <h2>Registered Cards</h2>
+        <div class="buttons">
+            <input type="button" id="view_toggle_btn" value="View All Cards" onclick="loadAllCards()">
+            <input type="button" value="Reset to Defaults" onclick="resetDatabase()" style="background-color: #e74c3c;">
+        </div>
+        <div id="cards_table_container">
+            <table id="cards_table" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <thead>
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Card ID</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Name</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Status</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Added</th>
+                    </tr>
+                </thead>
+                <tbody id="cards_tbody">
+                    <tr>
+                        <td colspan="4" style="border: 1px solid #ddd; padding: 8px; text-align: center;">Loading cards...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="rfid.js"></script>
+</body>
+</html>

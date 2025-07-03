@@ -37,6 +37,7 @@ esp_err_t rfid_manager_load_from_file(void);
 
 // Utility Functions
 esp_err_t rfid_manager_format_database(void);
+esp_err_t rfid_manager_reset_to_defaults(void);
 bool rfid_manager_is_database_valid(void);
 esp_err_t rfid_manager_get_card_list_json(char *buffer, size_t buffer_len);
 

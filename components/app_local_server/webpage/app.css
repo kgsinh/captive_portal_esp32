@@ -146,3 +146,58 @@ input[type="button"]:hover {
     display: inline-block;
     font-size: 16px;
 } */
+
+/* Navigation Section Styles */
+#Navigation {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+#Navigation h2 {
+    color: white;
+    text-align: center;
+    margin-bottom: 15px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.nav-description {
+    color: rgba(255, 255, 255, 0.9);
+    text-align: center;
+    margin-top: 10px;
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+/* RFID Button Special Styling */
+.rfid-button {
+    background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+    font-size: 16px !important;
+    padding: 12px 24px !important;
+    border-radius: 8px !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3) !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer !important;
+}
+
+.rfid-button:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(231, 76, 60, 0.4) !important;
+}
+
+.rfid-button:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3) !important;
+}
+
+/* Center the navigation buttons */
+#Navigation .buttons {
+    text-align: center;
+    padding-top: 15px;
+}

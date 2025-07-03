@@ -11,6 +11,9 @@
 #define RFID_DB_PATH "/spiffs/rfid_database.bin"
 #define RFID_CARDS_PATH "/spiffs/rfid_cards.bin"
 
+// Admin card protection
+#define ADMIN_CARD_ID 0x12345678
+
 static const char *TAG = "rfid_manager";
 static SemaphoreHandle_t rfid_mutex = NULL;
 
@@ -218,6 +221,13 @@ esp_err_t rfid_manager_add_card(uint32_t card_id, const char *name)
 esp_err_t rfid_manager_remove_card(uint32_t card_id)
 {
     ESP_LOGI(TAG, "Removing RFID card: %lu", (unsigned long)card_id);
+
+    // Check if attempting to remove the protected admin card
+    if (card_id == ADMIN_CARD_ID)
+    {
+        ESP_LOGW(TAG, "Attempted to remove protected admin card: %lu", (unsigned long)card_id);
+        return ESP_ERR_NOT_SUPPORTED;
+    }
 
     // Acquire mutex for thread safety
     if (xSemaphoreTake(rfid_mutex, portMAX_DELAY) != pdTRUE)
@@ -610,6 +620,30 @@ esp_err_t rfid_manager_format_database(void)
 
     ESP_LOGI(TAG, "RFID database formatted successfully");
     xSemaphoreGive(rfid_mutex);
+    return ESP_OK;
+}
+
+esp_err_t rfid_manager_reset_to_defaults(void)
+{
+    ESP_LOGI(TAG, "Resetting RFID database to defaults");
+
+    // First format the database to clear everything
+    esp_err_t ret = rfid_manager_format_database();
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to format database before loading defaults");
+        return ret;
+    }
+
+    // Then load the default cards
+    ret = rfid_manager_load_defaults();
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to load default cards");
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "RFID database reset to defaults successfully");
     return ESP_OK;
 }
 
