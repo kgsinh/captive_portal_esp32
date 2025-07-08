@@ -53,6 +53,21 @@
     </div>
     <hr>
 
+    <!-- Search Section -->
+    <div id="SearchSection">
+        <h2>Search Cards</h2>
+        <section>
+            <select id="search_type" onchange="clearSearch()">
+                <option value="id">Search by Card ID</option>
+                <option value="name">Search by Name</option>
+            </select>
+            <input id="search_input" type="text" placeholder="Enter Card ID (decimal or hex) or Name..." maxlength="50">
+            <input type="button" value="Clear Search" onclick="clearSearch()">
+        </section>
+        <div id="search_status"></div>
+    </div>
+    <hr>
+
     <!-- Card List Section -->
     <div id="CardList">
         <h2>Registered Cards</h2>

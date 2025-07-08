@@ -3,6 +3,15 @@
 // Global variable to track current view state
 let currentView = 'defaults'; // 'defaults' or 'all'
 
+// Search state management
+let searchState = {
+    isActive: false,
+    type: 'id', // 'id' or 'name'
+    query: '',
+    allCards: [], // Store all cards for client-side filtering
+    filteredCards: []
+};
+
 // Admin card protection
 const ADMIN_CARD_ID = 305419896; // 0x12345678 in decimal
 const ADMIN_CARD_HEX = "0x12345678";
@@ -11,6 +20,7 @@ const ADMIN_CARD_HEX = "0x12345678";
 $(document).ready(function() {
     loadCardCount();
     loadDefaultCards(); // Load only default cards initially
+    initializeSearch(); // Initialize search functionality
 });
 
 // Utility function to format card ID for display (hex primary, decimal secondary)
@@ -369,3 +379,243 @@ $(document).on('keypress', '#remove_card_id', function(e) {
         removeCard();
     }
 });
+
+// ===== SEARCH FUNCTIONALITY =====
+
+// Initialize search functionality
+function initializeSearch() {
+    // Update placeholder text based on search type
+    updateSearchPlaceholder();
+    
+    // Add event listeners
+    $('#search_type').on('change', function() {
+        searchState.type = $(this).val();
+        updateSearchPlaceholder();
+        performSearch(); // Re-search with new type
+    });
+    
+    // Real-time search with debouncing
+    let searchTimeout;
+    $('#search_input').on('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            performSearch();
+        }, 300); // 300ms debounce
+    });
+    
+    // Handle Enter key in search input
+    $('#search_input').on('keypress', function(e) {
+        if (e.which === 13) { // Enter key
+            clearTimeout(searchTimeout);
+            performSearch();
+        }
+    });
+}
+
+// Update search input placeholder based on search type
+function updateSearchPlaceholder() {
+    const searchInput = $('#search_input');
+    if (searchState.type === 'id') {
+        searchInput.attr('placeholder', 'Enter Card ID (decimal or hex, e.g., 12345 or 0x3039)...');
+    } else {
+        searchInput.attr('placeholder', 'Enter name (e.g., John, Doe, or John Doe)...');
+    }
+}
+
+// Perform search based on current input and type
+function performSearch() {
+    const query = $('#search_input').val().trim();
+    searchState.query = query;
+    
+    if (query === '') {
+        // Empty search - show all cards for current view
+        searchState.isActive = false;
+        $('#search_status').empty();
+        refreshCurrentView();
+        return;
+    }
+    
+    searchState.isActive = true;
+    
+    // Always search the entire database regardless of current view
+    $.ajax({
+        url: '/cards/get',
+        type: 'GET',
+        success: function(response) {
+            const cards = response.cards || [];
+            searchState.allCards = cards;
+            
+            // Filter cards based on search criteria
+            const filteredCards = filterCards(cards, query, searchState.type);
+            searchState.filteredCards = filteredCards;
+            
+            // Display filtered results (always show all matching cards from database)
+            displaySearchResults(filteredCards, false);
+            
+            // Update search status
+            updateSearchStatus(filteredCards.length, cards.length, query);
+        },
+        error: function(xhr, status, error) {
+            displayError('cards_tbody', 'Error loading cards for search');
+            showStatus('search_status', 'Error performing search', 'error');
+        }
+    });
+}
+
+// Filter cards based on search query and type
+function filterCards(cards, query, searchType) {
+    if (!query) return cards;
+    
+    const lowerQuery = query.toLowerCase();
+    
+    return cards.filter(card => {
+        if (searchType === 'id') {
+            // ID search - support both decimal and hex formats
+            const cardIdStr = card.id.toString();
+            const cardIdHex = card.id.toString(16).toLowerCase();
+            const cardIdHexPrefixed = '0x' + cardIdHex;
+            
+            // Parse the query to handle different formats
+            let queryId = null;
+            try {
+                queryId = parseCardId(query);
+            } catch (e) {
+                // If parsing fails, try string matching
+            }
+            
+            // Exact ID match
+            if (queryId !== null && card.id === queryId) {
+                return true;
+            }
+            
+            // Partial string matching for ID
+            return cardIdStr.includes(lowerQuery) || 
+                   cardIdHex.includes(lowerQuery) || 
+                   cardIdHexPrefixed.includes(lowerQuery);
+        } else {
+            // Name search - case-insensitive partial matching
+            return card.name.toLowerCase().includes(lowerQuery);
+        }
+    });
+}
+
+// Display search results
+function displaySearchResults(cards, isDefaultView = false) {
+    const tbody = $('#cards_tbody');
+    tbody.empty();
+    
+    if (cards.length === 0) {
+        const searchTypeText = searchState.type === 'id' ? 'Card ID' : 'Name';
+        tbody.append(`<tr><td colspan="4" style="border: 1px solid #ddd; padding: 8px; text-align: center;">No cards found matching ${searchTypeText}: "${searchState.query}"</td></tr>`);
+        return;
+    }
+    
+    cards.forEach(function(card) {
+        const timestamp = card.timestamp ? new Date(card.timestamp * 1000).toLocaleDateString() : 'Unknown';
+        const status = card.active ? 'Active' : 'Inactive';
+        
+        // Add visual indicator for default cards
+        const defaultBadge = isDefaultView ? '<span style="background: #007bff; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 5px;">DEFAULT</span>' : '';
+        
+        // Highlight matching text
+        let displayName = card.name;
+        let displayId = formatCardId(card.id);
+        
+        if (searchState.type === 'name' && searchState.query) {
+            displayName = highlightMatch(card.name, searchState.query);
+        } else if (searchState.type === 'id' && searchState.query) {
+            displayId = highlightCardIdMatch(card.id, searchState.query);
+        }
+        
+        tbody.append(`
+            <tr>
+                <td style="border: 1px solid #ddd; padding: 8px;">${displayId}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${displayName}${defaultBadge}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${status}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${timestamp}</td>
+            </tr>
+        `);
+    });
+}
+
+// Highlight matching text in search results
+function highlightMatch(text, query) {
+    if (!query) return text;
+    
+    const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+    return text.replace(regex, '<mark style="background-color: #ffeb3b; padding: 1px 2px;">$1</mark>');
+}
+
+// Highlight matching card ID
+function highlightCardIdMatch(cardId, query) {
+    const hex = `0x${cardId.toString(16).toUpperCase().padStart(8, '0')}`;
+    const decimal = cardId.toString();
+    
+    let highlightedHex = hex;
+    let highlightedDecimal = decimal;
+    
+    if (query) {
+        const lowerQuery = query.toLowerCase();
+        
+        // Try to highlight hex format
+        if (hex.toLowerCase().includes(lowerQuery)) {
+            highlightedHex = highlightMatch(hex, query);
+        }
+        
+        // Try to highlight decimal format
+        if (decimal.includes(lowerQuery)) {
+            highlightedDecimal = highlightMatch(decimal, query);
+        }
+    }
+    
+    return `
+        <div class="card-id-primary">${highlightedHex}</div>
+        <div class="card-id-secondary">${highlightedDecimal}</div>
+    `;
+}
+
+// Escape special regex characters
+function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Update search status message
+function updateSearchStatus(foundCount, totalCount, query) {
+    const searchTypeText = searchState.type === 'id' ? 'Card ID' : 'Name';
+    
+    if (foundCount === 0) {
+        showStatus('search_status', `No cards found matching ${searchTypeText}: "${query}" in database`, 'error');
+    } else if (foundCount === totalCount) {
+        showStatus('search_status', `Showing all ${totalCount} cards in database`, 'info');
+    } else {
+        showStatus('search_status', `Found ${foundCount} of ${totalCount} cards in database matching ${searchTypeText}: "${query}"`, 'success');
+    }
+}
+
+// Clear search and show all cards
+function clearSearch() {
+    searchState.isActive = false;
+    searchState.query = '';
+    searchState.allCards = [];
+    searchState.filteredCards = [];
+    
+    $('#search_input').val('');
+    $('#search_status').empty();
+    
+    // Update placeholder for new search type
+    updateSearchPlaceholder();
+    
+    // Refresh current view
+    refreshCurrentView();
+}
+
+// Override existing functions to maintain search state when needed
+const originalRefreshCurrentView = refreshCurrentView;
+refreshCurrentView = function() {
+    if (searchState.isActive && searchState.query) {
+        // If search is active, re-perform search instead of just refreshing
+        performSearch();
+    } else {
+        originalRefreshCurrentView();
+    }
+};

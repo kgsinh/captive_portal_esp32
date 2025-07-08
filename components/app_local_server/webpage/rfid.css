@@ -67,7 +67,7 @@
 }
 
 /* Input field styling to match main page */
-input[type="number"], input[type="text"] {
+input[type="number"], input[type="text"], select {
     padding: 8px;
     margin: 5px;
     border: 1px solid #ccc;
@@ -76,9 +76,67 @@ input[type="number"], input[type="text"] {
     width: 200px;
 }
 
-input[type="number"]:focus, input[type="text"]:focus {
+input[type="number"]:focus, input[type="text"]:focus, select:focus {
     border-color: #4caf50;
     outline: none;
+}
+
+/* Search section styling */
+#SearchSection {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+#SearchSection h2 {
+    margin-top: 0;
+    color: #1d3557;
+}
+
+#search_type {
+    width: 180px;
+    margin-right: 10px;
+}
+
+#search_input {
+    width: 300px;
+    margin-right: 10px;
+}
+
+/* Search highlight styling */
+mark {
+    background-color: #ffeb3b !important;
+    padding: 1px 2px !important;
+    border-radius: 2px;
+    font-weight: bold;
+}
+
+/* Search status styling */
+#search_status .status-message {
+    margin: 10px 0 0 0;
+    font-size: 14px;
+}
+
+/* Button styling for search */
+input[type="button"] {
+    background-color: #1d3557;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin: 5px;
+}
+
+input[type="button"]:hover {
+    background-color: #457b9d;
+}
+
+input[type="button"]:active {
+    background-color: #1d3557;
+    transform: translateY(1px);
 }
 
 /* Section spacing */
